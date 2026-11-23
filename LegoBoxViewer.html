@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LegoBoxViewer</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1d1f23;
+    background: radial-gradient(120% 90% at 50% 35%, #f6f4ef 0%, #e6e2d9 60%, #d6d1c6 100%);
+  }
+  #stage {
+    position: fixed; inset: 0; perspective: 2600px; perspective-origin: 50% 46%;
+    touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+  }
+  #stage.drag { cursor: grabbing; }
+  #cam { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+  .g { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
+  .f {
+    position: absolute; overflow: hidden; background: #f2c21b center / 100% 100% no-repeat;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  }
+  .f.two { backface-visibility: visible; -webkit-backface-visibility: visible; }
+  .f > i { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+  .f.missing { background-image: repeating-linear-gradient(45deg, #f2c21b 0 14px, #ecb90f 14px 28px) !important; }
+  .f.missing > b {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+    font: 600 18px/1.2 system-ui, sans-serif; color: #5b4a00; padding: 4px;
+  }
+  .f[data-img] { cursor: zoom-in; }
+  #stage.drag .f[data-img] { cursor: grabbing; }
+  #side {
+    position: fixed; left: 18px; top: 16px; z-index: 2; display: flex; flex-direction: column; gap: 12px;
+    max-height: calc(100% - 100px); pointer-events: none;
+  }
+  header { pointer-events: none; }
+  header h1 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+  header p { margin: 2px 0 0; color: #6b6f76; font-size: 13px; }
+  .bar { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 8px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 999px; padding: 10px 18px;
+    border: 1px solid #ddd9d0; background: rgba(255,255,255,.92); color: #1d1f23; box-shadow: 0 4px 16px rgba(0,0,0,.08); white-space: nowrap;
+  }
+  [hidden] { display: none !important; }
+  button.primary { background: #1d1f23; color: #fff; border-color: #1d1f23; min-width: 112px; }
+  button:focus-visible { outline: 2px solid #1971c2; outline-offset: 2px; }
+  #menu {
+    display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; padding: 2px;
+    pointer-events: auto; align-self: flex-start;
+  }
+  #menu button {
+    display: block; text-align: left; padding: 5px 14px 5px 5px;
+    font-weight: 500; box-shadow: none; max-width: 260px; border-radius: 12px;
+  }
+  /* picture in a fixed left column, name in the right column (same in every browser) */
+  #menu .mi { display: grid; grid-template-columns: 46px minmax(0, auto); column-gap: 10px; align-items: center; direction: ltr; }
+  #menu .nm { grid-column: 2; grid-row: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #menu .thumb {
+    grid-column: 1; grid-row: 1; width: 46px; height: 37px; border-radius: 7px; object-fit: cover; display: block;
+    background: repeating-linear-gradient(45deg, #f2c21b 0 6px, #ecb90f 6px 12px);
+    box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+  }
+  #menu button.on .thumb { box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
+  #menu button.on { background: #1d1f23; color: #fff; border-color: #1d1f23; font-weight: 600; }
+  #empty {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 440px; text-align: center;
+    background: rgba(255,255,255,.9); border-radius: 14px; padding: 18px 22px; box-shadow: 0 6px 24px rgba(0,0,0,.08);
+  }
+  /* information card from the box folder's metadata.json */
+  #info {
+    position: fixed; right: 16px; top: 16px; z-index: 2; width: 300px; box-sizing: border-box;
+    background: rgba(255,255,255,.93); border: 1px solid rgba(0,0,0,.06); border-radius: 14px; padding: 14px 16px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.10); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  #info .cap { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #6b6f76; font-weight: 600; }
+  #infoName { margin: 2px 0 0; font-size: 17px; line-height: 1.25; letter-spacing: -.01em; overflow-wrap: anywhere; }
+  #infoTree { margin-top: 8px; font-size: 12.5px; color: #4a4e55; line-height: 1.5; overflow-wrap: anywhere; }
+  #infoTree .sep { color: #a3a7ad; margin: 0 5px; }
+  #infoTree a { color: inherit; }
+  #info .links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  #info .links a {
+    display: inline-flex; align-items: center; gap: 5px; text-decoration: none; font-weight: 600; font-size: 13px;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid #ddd9d0; background: #fff; color: #1d1f23;
+  }
+  #info .links a:hover { border-color: #1d1f23; }
+  #info .links a:focus-visible, #infoTree a:focus-visible { outline: 2px solid #1971c2; outline-offset: 2px; }
+  #infoErr { margin: 8px 0 0; font-size: 12px; color: #a61e1e; overflow-wrap: anywhere; }
+  #infoErr.note { color: #8a5a00; background: #fff6dc; border-radius: 8px; padding: 8px 10px; }
+  #toast {
+    position: fixed; left: 50%; bottom: 80px; transform: translate(-50%, 12px); opacity: 0; transition: .2s; z-index: 20;
+    background: #1d1f23; color: #fff; padding: 9px 14px; border-radius: 10px; pointer-events: none; max-width: 90vw; text-align: center;
+  }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* full-screen picture of one side */
+  #viewer {
+    position: fixed; inset: 0; z-index: 30; background: #121315; color: #fff;
+    display: grid; grid-template-rows: auto 1fr; user-select: none; -webkit-user-select: none;
+  }
+  #viewer .vtop { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; }
+  #viewer .vtop b { font-size: 16px; }
+  #viewer .vtop small { display: block; color: #9aa0a8; font-size: 12px; margin-top: 1px; word-break: break-all; }
+  #viewer .vright { display: flex; align-items: center; gap: 12px; color: #9aa0a8; font-variant-numeric: tabular-nums; }
+  #viewer .vbody { position: relative; min-height: 0; }
+  #vScroll {
+    position: absolute; inset: 0; overflow: auto; touch-action: none; cursor: zoom-in;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.35) transparent;
+  }
+  #vScroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  #vScroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.3); border-radius: 10px; border: 2px solid #121315; }
+  #vScroll::-webkit-scrollbar-corner { background: transparent; }
+  #vScroll.big { cursor: grab; }
+  #vScroll.panning { cursor: grabbing; }
+  #vStage { position: relative; }
+  #vImg {
+    position: absolute; display: block; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none;
+    box-shadow: 0 8px 40px rgba(0,0,0,.5); background: #2a2b2e; image-rendering: auto;
+  }
+  .vzoom {
+    position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px;
+    background: rgba(30,31,34,.88); border: 1px solid rgba(255,255,255,.12); border-radius: 999px; padding: 4px;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .vzoom button { padding: 6px 12px; font-size: 13px; border-color: transparent !important; background: transparent !important; }
+  .vzoom button:hover { background: rgba(255,255,255,.14) !important; }
+  .vzoom .zb { width: 34px; padding: 6px 0; font-size: 17px; line-height: 1; }
+  #vPct { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; color: #d7dbe0; font-size: 13px; }
+  .vhint { font-size: 12px; }
+  #viewer button { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.15); box-shadow: none; }
+  #viewer button:hover { background: rgba(255,255,255,.18); }
+  #vClose { padding: 8px 14px; }
+  .vnav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; padding: 0; font-size: 22px; line-height: 1; }
+  #vPrev { left: 10px; } #vNext { right: 10px; }
+
+  @media (max-width: 720px) {
+    #side { left: 0; right: 0; top: 12px; }
+    #info { left: 12px; right: 12px; top: auto; bottom: 76px; width: auto; padding: 10px 12px; }
+    #infoName { font-size: 15px; }
+    #info .links { margin-top: 8px; }
+    header { padding: 0 14px; }
+    #menu { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 2px 14px; scrollbar-width: none; align-self: stretch; }
+    #menu button { flex: 0 0 auto; }
+    .bar button { padding: 10px 14px; }
+    button.primary { min-width: 0; }
+    .vnav { top: auto; bottom: 14px; transform: none; }
+    .vzoom { bottom: 14px; }
+    .vhint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"><div id="cam"></div></div>
+<div id="side">
+  <header><h1 id="title">LegoBoxViewer</h1>
+    <p>Drag to rotate · hold both mouse buttons (or use two fingers) to move<br>Scroll or pinch to zoom · click a side to see its picture</p></header>
+  <nav id="menu" aria-label="Boxes"></nav>
+</div>
+<div id="empty" hidden>No boxes yet. Make a folder called <b>images</b> next to this file and put each box's pictures
+in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and reload.</div>
+<aside id="info" hidden aria-labelledby="infoName">
+  <div class="cap">Set</div>
+  <h2 id="infoName"></h2>
+  <nav id="infoTree" aria-label="BrickLink category"></nav>
+  <div class="links">
+    <a id="infoBL" target="_blank" rel="noopener noreferrer">BrickLink ↗</a>
+    <a id="infoIns" target="_blank" rel="noopener noreferrer">Instructions ↗</a>
+  </div>
+  <p id="infoErr" hidden></p>
+</aside>
+<div class="bar" id="bar">
+  <button id="lidBtn" class="primary">Open lid</button>
+  <button id="resetBtn">Reset view</button>
+</div>
+<div id="toast" role="status"></div>
+<div id="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="vName">
+  <div class="vtop">
+    <div><b id="vName"></b><small id="vFile"></small></div>
+    <div class="vright"><span class="vhint">Scroll to zoom · drag to move · double-click: fit / 100%</span>
+      <span id="vCount"></span><button id="vClose" aria-label="Close">Close ✕</button></div>
+  </div>
+  <div class="vbody">
+    <div id="vScroll"><div id="vStage"><img id="vImg" alt="" draggable="false"></div></div>
+    <button id="vPrev" class="vnav" aria-label="Previous picture">‹</button>
+    <button id="vNext" class="vnav" aria-label="Next picture">›</button>
+    <div class="vzoom">
+      <button id="vOut" class="zb" aria-label="Zoom out" title="Zoom out (−)">−</button>
+      <span id="vPct" aria-live="polite"></span>
+      <button id="vIn" class="zb" aria-label="Zoom in" title="Zoom in (+)">+</button>
+      <button id="vFit" title="Fit to screen (0)">Fit</button>
+      <button id="v100" title="Actual size (1)">100%</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  Every folder inside "images" is one box; its name is the menu item.
+  The folders are found from images/folders.js (written by update-folders.bat / update-folders.sh)
+  or, on a web server that shows folder listings, by reading the listing of images/.
+  See README.txt for the picture names and how each picture should be oriented.
+*/
+(() => {
+  const ROOT = 'images/';
+  const PICS = [['top', 'Top'], ['front', 'Front side'], ['right', 'Right side'], ['back', 'Back side'], ['left', 'Left side'],
+    ['bottom', 'Bottom'], ['lid-inside', 'Lid inside'], ['card', 'Window card']];
+  const PIC_LABEL = Object.fromEntries(PICS);
+  const EXTS = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+
+  // ---- sizes (cm), drawn at 10 px per cm ----
+  // The width is fixed. The depth follows the proportions of top.jpg (depth = width x its height / its width),
+  // and the height follows the proportions of left.jpg (height = depth x its height / its width).
+  const S = 10;
+  const WIDTH_CM = 57.7, DEFAULT_HEIGHT_CM = 9.4, DEFAULT_DEPTH_CM = 46.4;
+  const INNER_SMALLER = [2.2, 1.9, 0.4];                 // inner box is this much smaller (w, d, h) in cm
+  const CARD_SMALLER = [2.4, 2.1];                       // window card is this much smaller (w, d) in cm
+  const LID_OPEN = 110;
+  let W, D, H, IW, ID, IH, CW, CD;                       // in px, set by build()
+  let box = null, hinge = null;
+
+  const cam = document.getElementById('cam');
+  const stage = document.getElementById('stage');
+  const faces = [];                                      // for lighting
+  const imgFaces = [];                                   // for loading pictures
+
+  function group(parent, t) {
+    const g = document.createElement('div'); g.className = 'g'; g.style.transform = t || ''; parent.appendChild(g); return g;
+  }
+  // a flat face centred on its group's origin
+  function face(parent, o) {
+    const el = document.createElement('div');
+    el.className = 'f' + (o.two ? ' two' : '') + (o.cls ? ' ' + o.cls : '');
+    if (o.id) el.id = o.id;
+    el.style.width = o.w + 'px'; el.style.height = o.h + 'px';
+    el.style.left = (o.left ?? -o.w / 2) + 'px'; el.style.top = (o.top ?? -o.h / 2) + 'px';
+    if (o.origin) el.style.transformOrigin = o.origin;
+    el.style.transform = o.t || '';
+    if (o.color) el.style.backgroundColor = o.color;
+    if (o.size) el.style.backgroundSize = o.size;
+    if (o.pos) el.style.backgroundPosition = o.pos;
+    const shade = document.createElement('i'); el.appendChild(shade);
+    parent.appendChild(el);
+    if (o.img) { imgFaces.push({ el, name: o.img }); el.dataset.img = o.img; }
+    faces.push({ shade, n: o.n || [0, -1, 0], lid: o.lid || 0, base: o.base || 0 });
+    return el;
+  }
+
+  // hasLid = false: a plain closed box from the six outside pictures, with no lid to open
+  function build(depthCm, heightCm, hasLid) {
+    W = WIDTH_CM * S; D = depthCm * S; H = heightCm * S;
+    IW = W - INNER_SMALLER[0] * S; ID = D - INNER_SMALLER[1] * S; IH = H - INNER_SMALLER[2] * S;
+    CW = W - CARD_SMALLER[0] * S; CD = D - CARD_SMALLER[1] * S;
+    box = group(cam);
+
+    // floor shadow
+    const sh = document.createElement('div');
+    sh.className = 'f';
+    Object.assign(sh.style, {
+      width: W * 1.7 + 'px', height: D * 1.7 + 'px', left: -W * 0.85 + 'px', top: -D * 0.85 + 'px',
+      transform: `translateY(${H / 2 + 1}px) rotateX(90deg)`,
+      background: 'radial-gradient(closest-side, rgba(40,30,10,.30), rgba(40,30,10,.16) 55%, rgba(40,30,10,0))',
+      pointerEvents: 'none',
+    });
+    box.appendChild(sh);
+
+    // outside of the box
+    face(box, { w: W, h: H, t: `translateZ(${D / 2}px)`, img: 'front', n: [0, 0, 1] });
+    face(box, { w: W, h: H, t: `rotateY(180deg) translateZ(${D / 2}px)`, img: 'back', n: [0, 0, -1] });
+    face(box, { w: D, h: H, t: `rotateY(90deg) translateZ(${W / 2}px)`, img: 'right', n: [1, 0, 0] });
+    face(box, { w: D, h: H, t: `rotateY(-90deg) translateZ(${W / 2}px)`, img: 'left', n: [-1, 0, 0] });
+    face(box, { w: W, h: D, t: `rotateX(-90deg) translateZ(${H / 2}px) rotateZ(180deg)`, img: 'bottom', n: [0, 1, 0],
+      size: hasLid ? `${(IW / W) * 100}% ${(ID / D) * 100}%` : '100% 100%' });
+
+    if (!hasLid) {                                       // fixed top face, nothing inside
+      face(box, { w: W, h: D, t: `translateY(${-H / 2}px) rotateX(90deg)`, img: 'top', n: [0, -1, 0] });
+      return;
+    }
+
+    // inside walls of the top part (plain board)
+    const board = '#dcd5c6';
+    face(box, { w: W, h: H, t: `translateZ(${D / 2 - 1}px) rotateY(180deg)`, color: board, n: [0, 0, -1], base: 0.1 });
+    face(box, { w: W, h: H, t: `translateZ(${-D / 2 + 1}px)`, color: board, n: [0, 0, 1], base: 0.1 });
+    face(box, { w: D, h: H, t: `translateX(${W / 2 - 1}px) rotateY(-90deg)`, color: board, n: [-1, 0, 0], base: 0.1 });
+    face(box, { w: D, h: H, t: `translateX(${-W / 2 + 1}px) rotateY(90deg)`, color: board, n: [1, 0, 0], base: 0.1 });
+
+    // inner (bottom) box: yellow walls and floor
+    const yel = '#f3c82a', yc = H / 2 - IH / 2;
+    face(box, { w: IW, h: IH, t: `translate3d(0, ${yc}px, ${ID / 2}px)`, color: yel, two: true, n: [0, 0, -1], base: 0.08 });
+    face(box, { w: IW, h: IH, t: `translate3d(0, ${yc}px, ${-ID / 2}px)`, color: yel, two: true, n: [0, 0, 1], base: 0.08 });
+    face(box, { w: ID, h: IH, t: `translate3d(${IW / 2}px, ${yc}px, 0) rotateY(90deg)`, color: yel, two: true, n: [-1, 0, 0], base: 0.08 });
+    face(box, { w: ID, h: IH, t: `translate3d(${-IW / 2}px, ${yc}px, 0) rotateY(90deg)`, color: yel, two: true, n: [1, 0, 0], base: 0.08 });
+    // window card with the contents showing through its windows: one flat picture (card.jpg)
+    face(box, { id: 'card', w: CW, h: CD, t: `translate3d(0, ${H / 2 - IH - 0.5}px, 0) rotateX(90deg)`, img: 'card', color: '#cdbb99', base: 0.04 });
+
+    // lid flap, hinged on the back top edge
+    hinge = group(box, `translate3d(0, ${-H / 2}px, ${-D / 2}px) rotateX(0deg)`);
+    face(hinge, { w: W, h: D, left: -W / 2, top: 0, origin: '50% 0', t: 'rotateX(90deg) translateZ(0.5px)', img: 'top', lid: 1 });
+    face(hinge, { w: W, h: D, left: -W / 2, top: -D, origin: '50% 100%', t: 'rotateX(-90deg) translateZ(0.5px)', img: 'lid-inside', lid: -1 });
+  }
+
+  // ---- pictures from the folder ----
+  const stamp = Date.now();
+  function findImage(dir, name) {
+    return new Promise((resolve) => {
+      let i = 0;
+      const next = () => {
+        if (i >= EXTS.length) return resolve(null);
+        const url = `${dir}${name}.${EXTS[i++]}?v=${stamp}`;
+        const im = new Image();
+        im.onload = () => resolve({ url, w: im.naturalWidth, h: im.naturalHeight });
+        im.onerror = next;
+        im.src = url;
+      };
+      next();
+    });
+  }
+  // ---- which boxes are there? every folder inside "images" is one box ----
+  async function listFromServer() {                     // web servers that show folder listings
+    if (!/^https?:$/.test(location.protocol)) return [];
+    try {
+      const base = new URL(ROOT, location.href);
+      const res = await fetch(base, { cache: 'no-store' });
+      if (!res.ok || !(res.headers.get('content-type') || '').includes('html')) return [];
+      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      const names = [];
+      for (const a of doc.querySelectorAll('a[href]')) {
+        const href = a.getAttribute('href');
+        if (!href || href[0] === '?' || href[0] === '#') continue;
+        const u = new URL(href, base);
+        if (u.origin !== base.origin || !u.pathname.startsWith(base.pathname)) continue;
+        const rest = u.pathname.slice(base.pathname.length);
+        if (/^[^/]+\/$/.test(rest)) names.push(decodeURIComponent(rest.slice(0, -1)));
+      }
+      return names;
+    } catch { return []; }
+  }
+  let folderFileBroken = false;
+  function listFromFile() {                             // images/folders.js (works from disk too)
+    return new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = `${ROOT}folders.js?v=${stamp}`;
+      s.onload = () => {
+        if (!Array.isArray(window.BOX_FOLDERS)) folderFileBroken = true;   // e.g. a metadata.json containing */
+        resolve(Array.isArray(window.BOX_FOLDERS) ? window.BOX_FOLDERS.map(String) : []);
+      };
+      s.onerror = () => resolve([]);
+      document.head.appendChild(s);
+    });
+  }
+
+  // ---- show one box ----
+  const titleEl = document.getElementById('title');
+  let boxes = [], current = null, loadToken = 0;
+  function clearBox() {
+    cam.innerHTML = '';
+    faces.length = 0; imgFaces.length = 0;
+    box = hinge = null;
+    lid = lidTarget = 0; lidBtn.textContent = 'Open lid';
+  }
+  // top.jpg decides the box's proportions; lid-inside.jpg / card.jpg decide whether there is a lid.
+  // With neither of those two (only the six outside pictures) the box is drawn closed, without a lid.
+  async function showBox(b) {
+    const token = ++loadToken;
+    const found = Object.fromEntries(await Promise.all(PICS.map(async ([n]) => [n, await findImage(b.dir, n)])));
+    if (token !== loadToken) return;                    // another box was picked meanwhile
+    b.found = found;
+    const { top, left, 'lid-inside': lidInside, card } = found;
+    clearBox();
+    const depth = top && top.w && top.h ? WIDTH_CM * top.h / top.w : DEFAULT_DEPTH_CM;
+    const hasLid = !!(lidInside || card);
+    const depthCm = Math.min(WIDTH_CM * 4, Math.max(WIDTH_CM * 0.25, depth));
+    const height = left && left.w && left.h ? depthCm * left.h / left.w : DEFAULT_HEIGHT_CM;
+    const heightCm = Math.min(Math.max(WIDTH_CM, depthCm) * 2, Math.max(1, height));
+    build(depthCm, heightCm, hasLid);
+    lidBtn.hidden = !hasLid;
+    for (const f of imgFaces) {
+      const img = found[f.name];
+      if (img) { f.el.style.backgroundImage = `url("${img.url}")`; continue; }
+      f.el.classList.add('missing');
+      const el = document.createElement('b'); el.textContent = `${b.label}${f.name}.jpg`; f.el.appendChild(el);
+      // an .avif file that is there but did not load: the browser is too old for AVIF, or the file is damaged
+      fileExists(`${b.dir}${f.name}.avif?v=${stamp}`).then((there) => {
+        if (there && token === loadToken) el.textContent = `${b.label}${f.name}.avif can't be shown: this browser may not support AVIF, or the file is damaged`;
+      });
+    }
+    dirty = true;
+  }
+  // ---- information card from metadata.json ----
+  // On a web server metadata.json is read directly. Opened from disk the browser may not read it,
+  // so update-folders copies it into images/folders.js (as a comment inside a function, read back here).
+  const info = document.getElementById('info');
+  function parseMeta(text) {
+    try { return { data: JSON.parse(text.replace(/\uFEFF/g, '').trim()) }; }
+    catch (err) { return { error: err.message }; }
+  }
+  // does a file exist? (works from disk too: the browser fetches it without running or reading it)
+  function fileExists(url) {
+    return new Promise((resolve) => {
+      const l = document.createElement('link');
+      l.rel = 'preload'; l.as = 'script'; l.href = url;
+      const done = (v) => { l.remove(); resolve(v); };
+      l.onload = () => done(true); l.onerror = () => done(false);
+      setTimeout(() => done(false), 4000);
+      document.head.appendChild(l);
+    });
+  }
+  async function loadMeta(b) {
+    if (/^https?:$/.test(location.protocol)) {
+      try {
+        const r = await fetch(`${b.dir}metadata.json?v=${stamp}`, { cache: 'no-store' });
+        if (r.ok) return parseMeta(await r.text());
+      } catch { /* fall back to the copy in folders.js */ }
+    }
+    const fn = (window.BOX_META_TEXT || {})[b.name];
+    if (typeof fn === 'function') {
+      const src = String(fn), a = src.indexOf('/*'), z = src.lastIndexOf('*/');
+      if (a >= 0 && z > a) return parseMeta(src.slice(a + 2, z));
+    }
+    // nothing readable: say why, instead of silently showing no card
+    if (await fileExists(`${b.dir}metadata.json?v=${stamp}`)) return { notice: 'stale' };
+    if (await fileExists(`${b.dir}metadata.json.txt?v=${stamp}`)) return { notice: 'txt' };
+    return null;
+  }
+  const pick = (o, keys) => { for (const k of keys) if (o && o[k] != null && o[k] !== '') return o[k]; return null; };
+  function safeUrl(v) {                                  // only real web links, never javascript: etc.
+    if (typeof v !== 'string' || !v.trim()) return null;
+    try { const u = new URL(v.trim()); return /^https?:$/.test(u.protocol) ? u.href : null; } catch { return null; }
+  }
+  function setLink(el, url) { if (url) { el.href = url; el.hidden = false; } else { el.removeAttribute('href'); el.hidden = true; } }
+  function showInfo(b, meta) {
+    const errEl = document.getElementById('infoErr'), tree = document.getElementById('infoTree');
+    tree.textContent = ''; errEl.hidden = true;
+    if (!meta) { info.hidden = true; return; }
+    if (meta.notice) {
+      document.getElementById('infoName').textContent = b.name;
+      setLink(document.getElementById('infoBL'), null); setLink(document.getElementById('infoIns'), null);
+      tree.hidden = true;
+      errEl.textContent = meta.notice === 'txt'
+        ? `Found ${b.label}metadata.json.txt — Windows added ".txt" to the name. Rename it to metadata.json (in Explorer, turn on View › File name extensions to see it), run update-folders, then reload.`
+        : `${b.label}metadata.json is there, but the page doesn't have it yet. Run update-folders (update-folders.bat on Windows) from this version of the package, then reload.`;
+      errEl.className = 'note'; errEl.hidden = false; info.hidden = false; return;
+    }
+    errEl.className = '';
+    if (meta.error || !meta.data || typeof meta.data !== 'object') {
+      document.getElementById('infoName').textContent = b.name;
+      setLink(document.getElementById('infoBL'), null); setLink(document.getElementById('infoIns'), null);
+      errEl.textContent = `${b.label}metadata.json could not be read: ${meta.error || 'it is not a JSON object'}`;
+      errEl.hidden = false; info.hidden = false; return;
+    }
+    const d = meta.data;
+    document.getElementById('infoName').textContent = String(pick(d, ['name', 'setName', 'title']) ?? b.name);
+    setLink(document.getElementById('infoBL'), safeUrl(pick(d, ['bricklink', 'bricklinkUrl', 'bricklinkLink'])));
+    setLink(document.getElementById('infoIns'), safeUrl(pick(d, ['instructions', 'instructionsUrl', 'instructionsLink'])));
+    let crumbs = pick(d, ['bricklinkMenu', 'bricklinkMenuTree', 'menuTree', 'menu', 'categories']);
+    if (typeof crumbs === 'string') crumbs = crumbs.split(/\s*(?:›|>|\/|:)\s*/);
+    if (Array.isArray(crumbs)) {
+      crumbs.forEach((c, i) => {
+        if (i) { const s = document.createElement('span'); s.className = 'sep'; s.textContent = '›'; tree.appendChild(s); }
+        const label = typeof c === 'object' && c ? String(pick(c, ['name', 'title', 'label']) ?? '') : String(c);
+        const url = typeof c === 'object' && c ? safeUrl(pick(c, ['url', 'link', 'href'])) : null;
+        const el = document.createElement(url ? 'a' : 'span');
+        el.textContent = label;
+        if (url) { el.href = url; el.target = '_blank'; el.rel = 'noopener noreferrer'; }
+        tree.appendChild(el);
+      });
+    }
+    tree.hidden = !tree.childNodes.length;
+    info.hidden = false;
+  }
+  async function updateInfo(b) {
+    info.hidden = true;
+    const meta = await loadMeta(b);
+    if (b === current) showInfo(b, meta);
+  }
+
+  function select(b, keepHash) {
+    if (!b || b === current) return;
+    current = b;
+    for (const x of boxes) {
+      x.btn.classList.toggle('on', x === b);
+      if (x === b) x.btn.setAttribute('aria-current', 'true'); else x.btn.removeAttribute('aria-current');
+    }
+    titleEl.textContent = b.name; document.title = `${b.name} · LegoBoxViewer`;
+    if (!keepHash) history.replaceState(null, '', '#' + encodeURIComponent(b.name));
+    showBox(b);
+    updateInfo(b);
+  }
+  const fromHash = () => {
+    let n = location.hash.slice(1);
+    try { n = decodeURIComponent(n); } catch {}
+    return boxes.find((b) => b.name === n);
+  };
+  addEventListener('hashchange', () => select(fromHash(), true));
+
+  (async () => {
+    let names = await listFromServer();
+    if (!names.length) names = await listFromFile();
+    names = [...new Set(names.filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    boxes = names.map((name) => ({ name, dir: `${ROOT}${encodeURIComponent(name)}/`, label: `${ROOT}${name}/` }));
+    if (!boxes.length && await findImage(ROOT, 'top')) boxes = [{ name: 'Box', dir: ROOT, label: ROOT }];  // pictures straight in images/
+    if (!boxes.length) {
+      const empty = document.getElementById('empty');
+      if (folderFileBroken) empty.textContent = 'images/folders.js could not be read. Check that no metadata.json contains */ , then run update-folders again and reload.';
+      empty.hidden = false; document.getElementById('bar').hidden = true; return;
+    }
+    const menu = document.getElementById('menu');
+    for (const b of boxes) {
+      b.btn = document.createElement('button');
+      b.btn.title = b.name;
+      const thumb = document.createElement('img');      // small picture of the box's top.jpg
+      thumb.className = 'thumb'; thumb.alt = ''; thumb.decoding = 'async';
+      const label = document.createElement('span'); label.className = 'nm'; label.textContent = b.name;
+      const row = document.createElement('span'); row.className = 'mi';
+      row.append(thumb, label);
+      b.btn.append(row);
+      findImage(b.dir, 'top').then((img) => { if (img) thumb.src = img.url; });
+      b.btn.addEventListener('click', () => select(b));
+      menu.appendChild(b.btn);
+    }
+    select(fromHash() || boxes[0], !!fromHash());
+  })();
+
+  // ---- view: rotate, zoom, light ----
+  const HOME = { yaw: -28, pitch: -32, zoom: 1, panX: 0, panY: 0 };
+  let yaw = HOME.yaw, pitch = HOME.pitch, zoom = HOME.zoom, panX = 0, panY = 0, lid = 0, lidTarget = 0;
+  let vx = 0, vy = 0, dirty = true;
+  const L = norm([0.35, -0.85, 0.4]);                    // light from upper right, in front
+  function norm(v) { const l = Math.hypot(...v); return v.map((c) => c / l); }
+  function rotate([x, y, z]) {
+    const a = yaw * Math.PI / 180, b = pitch * Math.PI / 180;
+    const x1 = x * Math.cos(a) + z * Math.sin(a), z1 = -x * Math.sin(a) + z * Math.cos(a);
+    return [x1, y * Math.cos(b) - z1 * Math.sin(b), y * Math.sin(b) + z1 * Math.cos(b)];
+  }
+  function baseScale() {                                // fit the box (any proportions) to the window
+    const spanX = 0.88 * W + 0.47 * D + 30, spanY = (0.47 * W + 0.88 * D) * 0.53 + 0.85 * H + 100;
+    return Math.min(innerWidth * 0.95 / spanX, innerHeight * 0.6 / spanY);
+  }
+  function render() {
+    if (!box) return;
+    const p = lid / LID_OPEN, tall = Math.min(2.2, D / (0.8 * W));   // make room for the open lid
+    const s = baseScale() * zoom * (1 - Math.min(0.4, 0.16 * tall) * p);
+    const lift = p * innerHeight * Math.min(0.22, 0.12 * tall);
+    cam.style.transform = `translate(${panX}px, ${panY + lift}px) scale3d(${s},${s},${s}) rotateX(${pitch}deg) rotateY(${yaw}deg)`;
+    if (hinge) hinge.style.transform = `translate3d(0, ${-H / 2}px, ${-D / 2}px) rotateX(${lid}deg)`;
+    const t = lid * Math.PI / 180;
+    for (const f of faces) {
+      const n = f.lid ? [0, -Math.cos(t) * f.lid, -Math.sin(t) * f.lid] : f.n;
+      const r = rotate(n);
+      const d = Math.max(0, r[0] * L[0] + r[1] * L[1] + r[2] * L[2]);
+      f.shade.style.opacity = Math.min(0.6, (1 - (0.62 + 0.38 * d)) + f.base).toFixed(3);
+    }
+  }
+
+  // drag / pinch / wheel
+  //   left button: rotate · both buttons (or right / middle alone): move · two fingers: move + zoom
+  //   a short click or tap on a side opens that side's picture full screen
+  const pts = new Map();
+  let downAt = null, pinch = null;
+  const mid = () => { const [a, b] = [...pts.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
+  stage.addEventListener('contextmenu', (e) => e.preventDefault());
+  stage.addEventListener('pointerdown', (e) => {
+    stage.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 1) {
+      const f = e.target.closest && e.target.closest('.f[data-img]');
+      downAt = { x: e.clientX, y: e.clientY, t: performance.now(), pic: f ? f.dataset.img : null, left: e.button === 0 };
+    }
+    if (pts.size === 2) { const m = mid(); pinch = { d: m.d, z: zoom, x: m.x, y: m.y }; downAt = null; }
+    vx = vy = 0; home = 0; stage.classList.add('drag');
+  });
+  stage.addEventListener('pointermove', (e) => {
+    const p = pts.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (pts.size === 2 && pinch) {
+      const m = mid();
+      zoom = clampZoom(pinch.z * m.d / pinch.d);
+      panX += m.x - pinch.x; panY += m.y - pinch.y; pinch.x = m.x; pinch.y = m.y;
+    } else if (pts.size === 1) {
+      const move = e.pointerType === 'mouse' && (e.buttons & 6);   // right and/or middle button held
+      if (move) {
+        if (e.buttons & 1 || dx || dy) downAt = null;   // a two-button press is never a click
+        panX += dx; panY += dy; vx = vy = 0;
+      } else {
+        yaw += dx * 0.35; pitch = clampPitch(pitch - dy * 0.35);
+        vx = dx * 0.35; vy = -dy * 0.35;
+      }
+    }
+    dirty = true;
+  });
+  const end = (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if (pts.size < 2) pinch = null;
+    if (pts.size === 0) {
+      stage.classList.remove('drag');
+      if (downAt && downAt.left && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6 && performance.now() - downAt.t < 500) {
+        vx = vy = 0;
+        if (downAt.pic) openViewer(downAt.pic);
+      }
+      downAt = null;
+    }
+  };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+  stage.addEventListener('wheel', (e) => { e.preventDefault(); zoom = clampZoom(zoom * Math.exp(-e.deltaY * 0.0015)); dirty = true; }, { passive: false });
+  const clampZoom = (z) => Math.min(3.2, Math.max(0.4, z));
+  const clampPitch = (p) => Math.min(88, Math.max(-88, p));
+
+  // lid
+  const lidBtn = document.getElementById('lidBtn');
+  function toggleLid() {
+    if (!hinge) return;
+    lidTarget = lidTarget > 0 ? 0 : LID_OPEN;
+    lidBtn.textContent = lidTarget > 0 ? 'Close lid' : 'Open lid';
+  }
+  lidBtn.addEventListener('click', toggleLid);
+  document.getElementById('resetBtn').addEventListener('click', () => { home = performance.now(); from = { yaw, pitch, zoom, panX, panY }; vx = vy = 0; });
+  let home = 0, from = null;
+  addEventListener('resize', () => { dirty = true; });
+
+  const toastEl = document.getElementById('toast');
+  let toastT = 0;
+  function toast(msg, ms = 3200) {
+    toastEl.textContent = msg; toastEl.classList.add('on');
+    clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), ms);
+  }
+  const fileName = (img) => decodeURIComponent(img.url.split('?')[0].split('/').pop());
+
+  // ---- full-screen picture of one side, with zoom and scrolling ----
+  //   mouse:  wheel zooms at the pointer · drag or scrollbars move · Shift+wheel scrolls sideways · double-click fit / 100%
+  //   touch:  pinch zooms · one finger moves · double-tap fit / zoom · swipe changes picture when not zoomed in
+  //   keys:   + / − zoom · 0 fit · 1 actual size · ← → previous / next · Esc close
+  const viewer = document.getElementById('viewer'), vImg = document.getElementById('vImg');
+  const vScroll = document.getElementById('vScroll'), vStage = document.getElementById('vStage');
+  const vPct = document.getElementById('vPct');
+  const VM = 24;                                         // margin around the picture, px
+  let vList = [], vIdx = 0, vFull = false;
+  const vz = { nw: 1, nh: 1, scale: 1, fit: 1, min: 1, max: 4, ready: false };
+  const vClamp = (s) => Math.min(vz.max, Math.max(vz.min, s));
+  const atFit = () => Math.abs(vz.scale - vz.fit) < 1e-4;
+  function vImgBox() {                                    // where the picture sits inside the stage
+    const w = vz.nw * vz.scale, h = vz.nh * vz.scale;
+    const sw = Math.max(vScroll.clientWidth, w + 2 * VM), sh = Math.max(vScroll.clientHeight, h + 2 * VM);
+    return { w, h, sw, sh, x: (sw - w) / 2, y: (sh - h) / 2 };
+  }
+  function vApply() {
+    for (let i = 0; i < 2; i++) {                         // twice: scrollbars appearing change the visible area
+      const b = vImgBox();
+      vStage.style.width = b.sw + 'px'; vStage.style.height = b.sh + 'px';
+      Object.assign(vImg.style, { width: b.w + 'px', height: b.h + 'px', left: b.x + 'px', top: b.y + 'px' });
+    }
+    const b = vImgBox();
+    vScroll.classList.toggle('big', b.w + 2 * VM > vScroll.clientWidth + 1 || b.h + 2 * VM > vScroll.clientHeight + 1);
+    vPct.textContent = Math.round(vz.scale * 100) + '%';
+  }
+  function vMeasureFit() {                                // scale that shows the whole picture
+    const W0 = vScroll.offsetWidth, H0 = vScroll.offsetHeight;
+    vz.fit = Math.max(0.01, Math.min((W0 - 2 * VM) / vz.nw, (H0 - 2 * VM) / vz.nh));
+    vz.min = Math.min(vz.fit, 1);
+    vz.max = Math.max(4, vz.fit * 4);
+  }
+  // zoom to scale s, keeping the picture point under (cx, cy) (relative to the visible area) in place
+  function vZoomTo(s, cx = vScroll.clientWidth / 2, cy = vScroll.clientHeight / 2) {
+    if (!vz.ready) return;
+    s = vClamp(s);
+    const b0 = vImgBox();
+    const ix = (vScroll.scrollLeft + cx - b0.x) / vz.scale, iy = (vScroll.scrollTop + cy - b0.y) / vz.scale;
+    vz.scale = s; vApply();
+    const b1 = vImgBox();
+    vScroll.scrollLeft = ix * s + b1.x - cx; vScroll.scrollTop = iy * s + b1.y - cy;
+  }
+  const vFitNow = () => { vz.scale = vz.fit; vApply(); vScroll.scrollLeft = vScroll.scrollTop = 0; };
+  function vToggle(cx, cy) {                              // double-click / double-tap
+    if (!atFit()) { vFitNow(); return; }
+    vZoomTo(vz.fit < 0.8 ? 1 : vz.fit * 2.5, cx, cy);         // to actual size, or 2.5x if it already fits at ~100%
+  }
+  function showPic() {
+    const n = vList[vIdx], img = current.found[n];
+    vz.ready = false; vz.nw = img.w || 1; vz.nh = img.h || 1;
+    vImg.src = img.url; vImg.alt = PIC_LABEL[n];
+    document.getElementById('vName').textContent = `${PIC_LABEL[n]} · ${current.name}`;
+    document.getElementById('vFile').textContent = `${current.label}${fileName(img)} · ${vz.nw} × ${vz.nh} px`;
+    document.getElementById('vCount').textContent = `${vIdx + 1} / ${vList.length}`;
+    const many = vList.length > 1;
+    document.getElementById('vPrev').hidden = document.getElementById('vNext').hidden = !many;
+    requestAnimationFrame(() => { vMeasureFit(); vz.ready = true; vFitNow(); });
+  }
+  function openViewer(name) {
+    if (!current || !current.found) return;
+    if (!current.found[name]) { toast(`No picture yet: ${current.label}${name}.jpg`); return; }
+    vList = PICS.map(([n]) => n).filter((n) => current.found[n]);
+    vIdx = vList.indexOf(name);
+    viewer.hidden = false;
+    showPic();
+    document.getElementById('vClose').focus();
+    if (viewer.requestFullscreen) {
+      viewer.requestFullscreen().then(() => { vFull = true; }).catch(() => {});
+    }
+  }
+  function closeViewer() {
+    if (viewer.hidden) return;
+    viewer.hidden = true; vImg.removeAttribute('src'); vz.ready = false;
+    if (vFull && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    vFull = false;
+  }
+  const step = (d) => { if (vList.length > 1) { vIdx = (vIdx + d + vList.length) % vList.length; showPic(); } };
+  document.getElementById('vClose').addEventListener('click', closeViewer);
+  document.getElementById('vPrev').addEventListener('click', () => step(-1));
+  document.getElementById('vNext').addEventListener('click', () => step(1));
+  document.getElementById('vIn').addEventListener('click', () => vZoomTo(vz.scale * 1.4));
+  document.getElementById('vOut').addEventListener('click', () => vZoomTo(vz.scale / 1.4));
+  document.getElementById('vFit').addEventListener('click', vFitNow);
+  document.getElementById('v100').addEventListener('click', () => vZoomTo(1));
+  document.addEventListener('fullscreenchange', () => { if (vFull && !document.fullscreenElement) { vFull = false; closeViewer(); } });
+  addEventListener('resize', () => {
+    if (viewer.hidden || !vz.ready) return;
+    const wasFit = atFit(); vMeasureFit();
+    if (wasFit) vFitNow(); else { vz.scale = vClamp(vz.scale); vApply(); }
+  });
+  addEventListener('keydown', (e) => {
+    if (viewer.hidden) return;
+    if (e.key === 'Escape') closeViewer();
+    else if (e.key === 'ArrowLeft') step(-1);
+    else if (e.key === 'ArrowRight') step(1);
+    else if (e.key === '+' || e.key === '=') vZoomTo(vz.scale * 1.4);
+    else if (e.key === '-' || e.key === '_') vZoomTo(vz.scale / 1.4);
+    else if (e.key === '0') vFitNow();
+    else if (e.key === '1') vZoomTo(1);
+    else return;
+    e.preventDefault();
+  });
+  const vLocal = (e) => { const r = vScroll.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  vScroll.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const k = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
+    const dx = e.deltaX * k, dy = e.deltaY * k;
+    if (e.shiftKey && !e.ctrlKey) { vScroll.scrollLeft += dx || dy; return; }      // Shift+wheel: sideways
+    if (!e.ctrlKey && Math.abs(dx) > Math.abs(dy)) { vScroll.scrollLeft += dx; return; } // touchpad sideways swipe
+    const p = vLocal(e);
+    vZoomTo(vz.scale * Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0015)), p.x, p.y);
+  }, { passive: false });
+  vScroll.addEventListener('dblclick', (e) => { const p = vLocal(e); vToggle(p.x, p.y); });
+
+  // dragging (mouse) and touch gestures
+  const vPts = new Map();
+  let vDrag = null, vPinch = null, vLastTap = null;
+  const onScrollbar = (e) => { const r = vScroll.getBoundingClientRect(); return e.clientX - r.left > vScroll.clientWidth || e.clientY - r.top > vScroll.clientHeight; };
+  vScroll.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && (e.button !== 0 || onScrollbar(e))) return;
+    vScroll.setPointerCapture(e.pointerId);
+    vPts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (vPts.size === 1) vDrag = { x0: e.clientX, y0: e.clientY, t: performance.now(), moved: false, onImg: false };
+    if (vPts.size === 2) {
+      const [a, b] = [...vPts.values()], r = vScroll.getBoundingClientRect();
+      vPinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: vz.scale, x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
+      if (vDrag) vDrag.moved = true;
+    }
+    // was the press on the picture itself? (a click beside it closes the view)
+    const b = vImgBox(), p = vLocal(e), sx = vScroll.scrollLeft + p.x, sy = vScroll.scrollTop + p.y;
+    if (vDrag) vDrag.onImg = sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h;
+  });
+  vScroll.addEventListener('pointermove', (e) => {
+    const pt = vPts.get(e.pointerId); if (!pt) return;
+    const dx = e.clientX - pt.x, dy = e.clientY - pt.y;
+    pt.x = e.clientX; pt.y = e.clientY;
+    if (vPts.size === 2 && vPinch) {
+      const [a, b] = [...vPts.values()], r = vScroll.getBoundingClientRect();
+      const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+      vScroll.scrollLeft -= mx - vPinch.x; vScroll.scrollTop -= my - vPinch.y;
+      vPinch.x = mx; vPinch.y = my;
+      vZoomTo(vPinch.s * Math.hypot(a.x - b.x, a.y - b.y) / vPinch.d, mx, my);
+      return;
+    }
+    if (!vDrag) return;
+    if (!vDrag.moved && Math.hypot(e.clientX - vDrag.x0, e.clientY - vDrag.y0) > 5) { vDrag.moved = true; vScroll.classList.add('panning'); }
+    if (vDrag.moved) { vScroll.scrollLeft -= dx; vScroll.scrollTop -= dy; }
+  });
+  const vEnd = (e) => {
+    if (!vPts.has(e.pointerId)) return;
+    vPts.delete(e.pointerId);
+    if (vPts.size < 2) vPinch = null;
+    if (vPts.size > 0) return;
+    vScroll.classList.remove('panning');
+    const d = vDrag; vDrag = null;
+    if (!d || e.type === 'pointercancel') return;
+    const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+    if (e.pointerType !== 'mouse') {
+      // swipe to the next / previous picture when the picture is not wider than the screen
+      const wide = vImgBox().w + 2 * VM > vScroll.clientWidth + 1;
+      if (d.moved && !wide && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && performance.now() - d.t < 600) { step(dx < 0 ? 1 : -1); return; }
+      if (!d.moved) {                                      // double-tap
+        const now = performance.now(), p = vLocal(e);
+        if (vLastTap && now - vLastTap.t < 320 && Math.hypot(p.x - vLastTap.x, p.y - vLastTap.y) < 30) { vLastTap = null; vToggle(p.x, p.y); return; }
+        vLastTap = { t: now, x: p.x, y: p.y };
+        if (!d.onImg) setTimeout(() => { if (vLastTap && vLastTap.t === now) closeViewer(); }, 330);
+      }
+      return;
+    }
+    if (!d.moved && !d.onImg) closeViewer();               // click beside the picture
+  };
+  vScroll.addEventListener('pointerup', vEnd);
+  vScroll.addEventListener('pointercancel', vEnd);
+
+  (function loop(now) {
+    if (pts.size === 0 && (Math.abs(vx) > 0.01 || Math.abs(vy) > 0.01)) {
+      yaw += vx; pitch = clampPitch(pitch + vy); vx *= 0.92; vy *= 0.92; dirty = true;
+    }
+    if (home) {
+      const k = Math.min(1, (now - home) / 700), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      yaw = from.yaw + (HOME.yaw - from.yaw) * e; pitch = from.pitch + (HOME.pitch - from.pitch) * e; zoom = from.zoom + (HOME.zoom - from.zoom) * e;
+      panX = from.panX * (1 - e); panY = from.panY * (1 - e);
+      if (k >= 1) home = 0;
+      dirty = true;
+    }
+    if (lid !== lidTarget) {
+      const step = 2.4;
+      lid = Math.abs(lidTarget - lid) <= step ? lidTarget : lid + Math.sign(lidTarget - lid) * step * (0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, Math.max(0.05, lid / LID_OPEN))));
+      dirty = true;
+    }
+    if (dirty) { render(); dirty = false; }
+    requestAnimationFrame(loop);
+  })(performance.now());
+})();
+</script>
+</body>
+</html>
