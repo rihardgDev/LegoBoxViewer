@@ -10,6 +10,14 @@
     font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1d1f23;
     background: radial-gradient(120% 90% at 50% 35%, #f6f4ef 0%, #e6e2d9 60%, #d6d1c6 100%);
   }
+  /* page background: the shown box's top.jpg, blurred into a soft gradient of its own colours */
+  #bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+  #bg .bgl {
+    position: absolute; inset: -25%; background: center / cover no-repeat; opacity: 0;
+    filter: blur(70px) saturate(1.25); transition: opacity .9s ease;
+  }
+  #bg .bgl.on { opacity: 1; }
+  #bg .veil { position: absolute; inset: 0; background: radial-gradient(120% 95% at 50% 42%, rgba(255,255,255,.50), rgba(255,255,255,.28) 65%, rgba(255,255,255,.18)); }
   #stage {
     position: fixed; inset: 0; perspective: 2600px; perspective-origin: 50% 46%;
     touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
@@ -34,9 +42,9 @@
     position: fixed; left: 18px; top: 16px; z-index: 2; display: flex; flex-direction: column; gap: 12px;
     max-height: calc(100% - 100px); pointer-events: none;
   }
-  header { pointer-events: none; }
+  header { pointer-events: none; text-shadow: 0 1px 2px rgba(255,255,255,.7); }
   header h1 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
-  header p { margin: 2px 0 0; color: #6b6f76; font-size: 13px; }
+  header p { margin: 2px 0 0; color: #3f434a; font-size: 13px; }
   .bar { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 8px; }
   button {
     font: inherit; font-weight: 600; cursor: pointer; border-radius: 999px; padding: 10px 18px;
@@ -45,24 +53,44 @@
   [hidden] { display: none !important; }
   button.primary { background: #1d1f23; color: #fff; border-color: #1d1f23; min-width: 112px; }
   button:focus-visible { outline: 2px solid #1971c2; outline-offset: 2px; }
+  /* box menu: grouped like each box's BrickLink menu (bricklinkMenu in metadata.json) */
   #menu {
-    display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; padding: 2px;
-    pointer-events: auto; align-self: flex-start;
+    display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow-y: auto; padding: 6px;
+    pointer-events: auto; align-self: flex-start; width: 280px; box-sizing: border-box;
+    background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.6); border-radius: 14px;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 6px 24px rgba(0,0,0,.08);
   }
-  #menu button {
-    display: block; text-align: left; padding: 5px 14px 5px 5px;
-    font-weight: 500; box-shadow: none; max-width: 260px; border-radius: 12px;
+  #menu button.item {
+    display: block; width: 100%; text-align: left; padding: 5px 10px 5px 5px; font-weight: 500;
+    box-shadow: none; border-radius: 11px; background: rgba(255,255,255,.88); border-color: rgba(0,0,0,.06);
   }
+  #menu button.item:hover { border-color: #b9b5ad; }
   /* picture in a fixed left column, name in the right column (same in every browser) */
-  #menu .mi { display: grid; grid-template-columns: 46px minmax(0, auto); column-gap: 10px; align-items: center; direction: ltr; }
-  #menu .nm { grid-column: 2; grid-row: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #menu .mi { display: grid; grid-template-columns: 46px minmax(0, 1fr); column-gap: 10px; align-items: center; direction: ltr; }
+  #menu .nm { grid-column: 2; grid-row: 1; min-width: 0; }
+  #menu .nm b, #menu .nm small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #menu .nm b { font-weight: inherit; }
+  #menu .nm small { font-size: 11.5px; font-weight: 400; color: #6b6f76; margin-top: 1px; }
   #menu .thumb {
     grid-column: 1; grid-row: 1; width: 46px; height: 37px; border-radius: 7px; object-fit: cover; display: block;
     background: repeating-linear-gradient(45deg, #f2c21b 0 6px, #ecb90f 6px 12px);
     box-shadow: 0 0 0 1px rgba(0,0,0,.08);
   }
-  #menu button.on .thumb { box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
-  #menu button.on { background: #1d1f23; color: #fff; border-color: #1d1f23; font-weight: 600; }
+  #menu button.item.on .thumb { box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
+  #menu button.item.on { background: #1d1f23; color: #fff; border-color: #1d1f23; font-weight: 600; }
+  #menu button.item.on .nm small { color: rgba(255,255,255,.72); }
+  #menu details.grp > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 5px 6px;
+    font-size: 12.5px; font-weight: 600; color: #33373d; border-radius: 8px; user-select: none; -webkit-user-select: none;
+  }
+  #menu details.grp > summary::-webkit-details-marker { display: none; }
+  #menu details.grp > summary::before { content: '▸'; display: inline-block; width: 10px; color: #6b6f76; transition: transform .15s; }
+  #menu details.grp[open] > summary::before { transform: rotate(90deg); }
+  #menu details.grp > summary:hover { background: rgba(255,255,255,.6); }
+  #menu details.grp > summary:focus-visible { outline: 2px solid #1971c2; outline-offset: 1px; }
+  #menu summary .cnt { margin-left: auto; color: #80848b; font-weight: 500; font-size: 11.5px; }
+  #menu .kids { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 4px 10px; padding-left: 8px; border-left: 1px solid rgba(0,0,0,.14); }
+  #menuBtn { display: none; }
   #empty {
     position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 440px; text-align: center;
     background: rgba(255,255,255,.9); border-radius: 14px; padding: 18px 22px; box-shadow: 0 6px 24px rgba(0,0,0,.08);
@@ -75,6 +103,8 @@
   }
   #info .cap { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #6b6f76; font-weight: 600; }
   #infoName { margin: 2px 0 0; font-size: 17px; line-height: 1.25; letter-spacing: -.01em; overflow-wrap: anywhere; }
+  #infoFacts { margin-top: 6px; font-size: 12.5px; color: #4a4e55; display: flex; flex-wrap: wrap; gap: 2px 14px; }
+  #infoFacts span b { font-weight: 600; color: #1d1f23; }
   #infoTree { margin-top: 8px; font-size: 12.5px; color: #4a4e55; line-height: 1.5; overflow-wrap: anywhere; }
   #infoTree .sep { color: #a3a7ad; margin: 0 5px; }
   #infoTree a { color: inherit; }
@@ -139,8 +169,14 @@
     #infoName { font-size: 15px; }
     #info .links { margin-top: 8px; }
     header { padding: 0 14px; }
-    #menu { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 2px 14px; scrollbar-width: none; align-self: stretch; }
-    #menu button { flex: 0 0 auto; }
+    #side { max-height: calc(100% - 24px); }
+    #menuBtn {
+      display: inline-flex; align-items: center; gap: 6px; pointer-events: auto; align-self: flex-start;
+      margin-left: 14px; padding: 8px 14px; max-width: calc(100% - 28px); overflow: hidden; text-overflow: ellipsis;
+    }
+    #menu { display: none; width: auto; margin: 0 12px; max-height: 62vh; align-self: stretch; background: rgba(255,255,255,.94); }
+    body.menu-open #menu { display: flex; }
+    body.menu-open #side { z-index: 6; }
     .bar button { padding: 10px 14px; }
     button.primary { min-width: 0; }
     .vnav { top: auto; bottom: 14px; transform: none; }
@@ -150,10 +186,12 @@
 </style>
 </head>
 <body>
+<div id="bg" aria-hidden="true"><div class="bgl"></div><div class="bgl"></div><div class="veil"></div></div>
 <div id="stage"><div id="cam"></div></div>
 <div id="side">
   <header><h1 id="title">LegoBoxViewer</h1>
     <p>Drag to rotate · hold both mouse buttons (or use two fingers) to move<br>Scroll or pinch to zoom · click a side to see its picture</p></header>
+  <button id="menuBtn" aria-controls="menu" aria-expanded="false">☰ <span id="menuBtnName">Boxes</span></button>
   <nav id="menu" aria-label="Boxes"></nav>
 </div>
 <div id="empty" hidden>No boxes yet. Make a folder called <b>images</b> next to this file and put each box's pictures
@@ -161,6 +199,7 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
 <aside id="info" hidden aria-labelledby="infoName">
   <div class="cap">Set</div>
   <h2 id="infoName"></h2>
+  <div id="infoFacts"></div>
   <nav id="infoTree" aria-label="BrickLink category"></nav>
   <div class="links">
     <a id="infoBL" target="_blank" rel="noopener noreferrer">BrickLink ↗</a>
@@ -171,6 +210,7 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
 <div class="bar" id="bar">
   <button id="lidBtn" class="primary">Open lid</button>
   <button id="resetBtn">Reset view</button>
+  <button id="galleryBtn" title="See all of this box's pictures full screen (G)">Gallery</button>
 </div>
 <div id="toast" role="status"></div>
 <div id="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="vName">
@@ -366,12 +406,14 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
     b.found = found;
     const { top, left, 'lid-inside': lidInside, card } = found;
     clearBox();
-    const depth = top && top.w && top.h ? WIDTH_CM * top.h / top.w : DEFAULT_DEPTH_CM;
     const hasLid = !!(lidInside || card);
+    // proportions from the shapes of top.jpg and left.jpg (boxSize in metadata.json is only shown on the card)
+    const depth = top && top.w && top.h ? WIDTH_CM * top.h / top.w : DEFAULT_DEPTH_CM;
     const depthCm = Math.min(WIDTH_CM * 4, Math.max(WIDTH_CM * 0.25, depth));
     const height = left && left.w && left.h ? depthCm * left.h / left.w : DEFAULT_HEIGHT_CM;
     const heightCm = Math.min(Math.max(WIDTH_CM, depthCm) * 2, Math.max(1, height));
     build(depthCm, heightCm, hasLid);
+    setBg(top ? top.url : null);
     lidBtn.hidden = !hasLid;
     for (const f of imgFaces) {
       const img = found[f.name];
@@ -426,10 +468,42 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
     if (typeof v !== 'string' || !v.trim()) return null;
     try { const u = new URL(v.trim()); return /^https?:$/.test(u.protocol) ? u.href : null; } catch { return null; }
   }
+  const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  function metaOf(b) {                                   // the metadata.json object, or null
+    const m = b && b.meta;
+    return m && m.data && typeof m.data === 'object' && !Array.isArray(m.data) ? m.data : null;
+  }
+  function crumbsOf(d) {                                 // bricklinkMenu as [{ label, url }]
+    let c = pick(d, ['bricklinkMenu', 'bricklinkMenuTree', 'menuTree', 'menu', 'categories']);
+    if (typeof c === 'string') c = c.split(/\s*(?:›|>|\/|:)\s*/);
+    if (!Array.isArray(c)) return [];
+    return c.map((x) => (typeof x === 'object' && x
+      ? { label: String(pick(x, ['name', 'title', 'label']) ?? '').trim(), url: safeUrl(pick(x, ['url', 'link', 'href'])) }
+      : { label: String(x ?? '').trim(), url: null })).filter((x) => x.label);
+  }
+  // boxSize: {"width": 57.7, "depth": 46.4, "height": 9.4} or [57.7, 46.4, 9.4] or "57.7 x 46.4 x 9.4 cm"
+  // (centimetres unless "unit" / the text says mm or in)
+  function parseSize(v) {
+    let w, d, h, unit = 'cm';
+    if (Array.isArray(v)) [w, d, h] = v.map(Number);
+    else if (v && typeof v === 'object') {
+      w = Number(pick(v, ['width', 'w', 'length', 'l'])); d = Number(pick(v, ['depth', 'd'])); h = Number(pick(v, ['height', 'h']));
+      if (typeof v.unit === 'string') unit = v.unit.trim().toLowerCase();
+    } else if (typeof v === 'string') {
+      [w, d, h] = (v.replace(/,/g, '.').match(/\d+(?:\.\d+)?/g) || []).map(Number);
+      const u = v.match(/\b(mm|cm|in|inch|inches)\b/i); if (u) unit = u[1].toLowerCase();
+    } else return null;
+    if (unit.startsWith('inch')) unit = 'in';
+    const f = { mm: 0.1, cm: 1, in: 2.54 }[unit];
+    if (!f || !(w > 0 && d > 0 && h > 0)) return null;
+    const fmt = (x) => String(Number(x.toFixed(2)));
+    return { w: w * f, d: d * f, h: h * f, text: `${fmt(w)} × ${fmt(d)} × ${fmt(h)} ${unit}` };
+  }
   function setLink(el, url) { if (url) { el.href = url; el.hidden = false; } else { el.removeAttribute('href'); el.hidden = true; } }
   function showInfo(b, meta) {
     const errEl = document.getElementById('infoErr'), tree = document.getElementById('infoTree');
-    tree.textContent = ''; errEl.hidden = true;
+    const facts = document.getElementById('infoFacts');
+    tree.textContent = ''; facts.textContent = ''; facts.hidden = true; errEl.hidden = true;
     if (!meta) { info.hidden = true; return; }
     if (meta.notice) {
       document.getElementById('infoName').textContent = b.name;
@@ -451,26 +525,85 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
     document.getElementById('infoName').textContent = String(pick(d, ['name', 'setName', 'title']) ?? b.name);
     setLink(document.getElementById('infoBL'), safeUrl(pick(d, ['bricklink', 'bricklinkUrl', 'bricklinkLink'])));
     setLink(document.getElementById('infoIns'), safeUrl(pick(d, ['instructions', 'instructionsUrl', 'instructionsLink'])));
-    let crumbs = pick(d, ['bricklinkMenu', 'bricklinkMenuTree', 'menuTree', 'menu', 'categories']);
-    if (typeof crumbs === 'string') crumbs = crumbs.split(/\s*(?:›|>|\/|:)\s*/);
-    if (Array.isArray(crumbs)) {
-      crumbs.forEach((c, i) => {
-        if (i) { const s = document.createElement('span'); s.className = 'sep'; s.textContent = '›'; tree.appendChild(s); }
-        const label = typeof c === 'object' && c ? String(pick(c, ['name', 'title', 'label']) ?? '') : String(c);
-        const url = typeof c === 'object' && c ? safeUrl(pick(c, ['url', 'link', 'href'])) : null;
-        const el = document.createElement(url ? 'a' : 'span');
-        el.textContent = label;
-        if (url) { el.href = url; el.target = '_blank'; el.rel = 'noopener noreferrer'; }
-        tree.appendChild(el);
-      });
-    }
+    const fact = (k, v) => { const s = document.createElement('span'); s.append(k + ' '); const bEl = document.createElement('b'); bEl.textContent = v; s.append(bEl); facts.append(s); };
+    const year = pick(d, ['year', 'released', 'releaseYear', 'yearOfRelease']);
+    if (year != null && typeof year !== 'object') fact('Released', String(year));
+    const rawSize = pick(d, ['boxSize', 'size', 'dimensions']), size = parseSize(rawSize);
+    if (size) fact('Box', size.text); else if (typeof rawSize === 'string') fact('Box', rawSize);
+    facts.hidden = !facts.childNodes.length;
+    crumbsOf(d).forEach((c, i) => {
+      if (i) { const s = document.createElement('span'); s.className = 'sep'; s.textContent = '›'; tree.appendChild(s); }
+      const el = document.createElement(c.url ? 'a' : 'span');
+      el.textContent = c.label;
+      if (c.url) { el.href = c.url; el.target = '_blank'; el.rel = 'noopener noreferrer'; }
+      tree.appendChild(el);
+    });
     tree.hidden = !tree.childNodes.length;
     info.hidden = false;
   }
-  async function updateInfo(b) {
-    info.hidden = true;
-    const meta = await loadMeta(b);
-    if (b === current) showInfo(b, meta);
+  function updateInfo(b) { showInfo(b, b.meta); }   // metadata is read for every box at start (the menu needs it)
+
+  // ---- page background: the shown box's top.jpg, blurred (cross-fades when another box is picked) ----
+  const bgLayers = [...document.querySelectorAll('#bg .bgl')];
+  let bgIdx = 0, bgUrl;
+  function setBg(url) {
+    if (url === bgUrl) return;
+    bgUrl = url;
+    const cur = bgLayers[bgIdx], next = bgLayers[bgIdx ^ 1];
+    if (url) { next.style.backgroundImage = `url("${url}")`; next.classList.add('on'); bgIdx ^= 1; }
+    cur.classList.remove('on');
+  }
+
+  // ---- box menu, grouped like each box's bricklinkMenu ----
+  const menu = document.getElementById('menu');
+  const menuBtn = document.getElementById('menuBtn');
+  function setMenuOpen(open) { document.body.classList.toggle('menu-open', open); menuBtn.setAttribute('aria-expanded', String(open)); }
+  menuBtn.addEventListener('click', () => setMenuOpen(!document.body.classList.contains('menu-open')));
+  function itemButton(b) {
+    b.btn = document.createElement('button');
+    b.btn.className = 'item'; b.btn.title = b.name;
+    const thumb = document.createElement('img');          // small picture of the box's top.jpg
+    thumb.className = 'thumb'; thumb.alt = ''; thumb.decoding = 'async';
+    const label = document.createElement('span'); label.className = 'nm';
+    const main = document.createElement('b'); main.textContent = b.name; label.append(main);
+    const d = metaOf(b), setName = d ? pick(d, ['name', 'setName', 'title']) : null;
+    if (setName != null && String(setName) !== b.name) {
+      const sub = document.createElement('small'); sub.textContent = String(setName); label.append(sub);
+      b.btn.title = `${b.name} · ${setName}`;
+    }
+    const row = document.createElement('span'); row.className = 'mi';
+    row.append(thumb, label);
+    b.btn.append(row);
+    findImage(b.dir, 'top').then((img) => { if (img) thumb.src = img.url; });
+    b.btn.addEventListener('click', () => select(b));
+    return b.btn;
+  }
+  function buildMenu() {
+    const root = { kids: new Map(), items: [] };
+    for (const b of boxes) {
+      let node = root;
+      for (const c of crumbsOf(metaOf(b) || {})) {
+        if (!node.kids.has(c.label)) node.kids.set(c.label, { kids: new Map(), items: [] });
+        node = node.kids.get(c.label);
+      }
+      node.items.push(b);
+    }
+    const count = (n) => n.items.length + [...n.kids.values()].reduce((s, k) => s + count(k), 0);
+    const render = (n, parent) => {
+      for (const label of [...n.kids.keys()].sort(byName)) {      // groups first, then the boxes
+        const k = n.kids.get(label);
+        const det = document.createElement('details'); det.className = 'grp'; det.open = true;
+        const sum = document.createElement('summary');
+        const name = document.createElement('span'); name.textContent = label;
+        const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = count(k);
+        sum.append(name, cnt);
+        const kids = document.createElement('div'); kids.className = 'kids';
+        det.append(sum, kids); parent.append(det);
+        render(k, kids);
+      }
+      for (const b of n.items.sort((x, y) => byName(x.name, y.name))) parent.append(itemButton(b));
+    };
+    render(root, menu);
   }
 
   function select(b, keepHash) {
@@ -480,6 +613,10 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
       x.btn.classList.toggle('on', x === b);
       if (x === b) x.btn.setAttribute('aria-current', 'true'); else x.btn.removeAttribute('aria-current');
     }
+    for (let el = b.btn.parentElement; el && el !== menu; el = el.parentElement) if (el.tagName === 'DETAILS') el.open = true;
+    b.btn.scrollIntoView({ block: 'nearest' });
+    document.getElementById('menuBtnName').textContent = b.name;
+    setMenuOpen(false);
     titleEl.textContent = b.name; document.title = `${b.name} · LegoBoxViewer`;
     if (!keepHash) history.replaceState(null, '', '#' + encodeURIComponent(b.name));
     showBox(b);
@@ -503,20 +640,8 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
       if (folderFileBroken) empty.textContent = 'images/folders.js could not be read. Check that no metadata.json contains */ , then run update-folders again and reload.';
       empty.hidden = false; document.getElementById('bar').hidden = true; return;
     }
-    const menu = document.getElementById('menu');
-    for (const b of boxes) {
-      b.btn = document.createElement('button');
-      b.btn.title = b.name;
-      const thumb = document.createElement('img');      // small picture of the box's top.jpg
-      thumb.className = 'thumb'; thumb.alt = ''; thumb.decoding = 'async';
-      const label = document.createElement('span'); label.className = 'nm'; label.textContent = b.name;
-      const row = document.createElement('span'); row.className = 'mi';
-      row.append(thumb, label);
-      b.btn.append(row);
-      findImage(b.dir, 'top').then((img) => { if (img) thumb.src = img.url; });
-      b.btn.addEventListener('click', () => select(b));
-      menu.appendChild(b.btn);
-    }
+    await Promise.all(boxes.map(async (b) => { b.meta = await loadMeta(b); }));
+    buildMenu();
     select(fromHash() || boxes[0], !!fromHash());
   })();
 
@@ -718,7 +843,16 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
     const wasFit = atFit(); vMeasureFit();
     if (wasFit) vFitNow(); else { vz.scale = vClamp(vz.scale); vApply(); }
   });
+  // Gallery button (or G): all of the box's pictures full screen, starting with the first one
+  function openGallery() {
+    if (!current || !current.found) return;
+    const first = PICS.map(([n]) => n).find((n) => current.found[n]);
+    if (first) openViewer(first); else toast('This box has no pictures yet.');
+  }
+  document.getElementById('galleryBtn').addEventListener('click', openGallery);
   addEventListener('keydown', (e) => {
+    if (viewer.hidden && (e.key === 'g' || e.key === 'G') && !e.ctrlKey && !e.metaKey && !e.altKey
+        && !(e.target.closest && e.target.closest('input, textarea, select'))) { openGallery(); return; }
     if (viewer.hidden) return;
     if (e.key === 'Escape') closeViewer();
     else if (e.key === 'ArrowLeft') step(-1);

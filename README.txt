@@ -8,6 +8,8 @@ Put these files together in one folder (for example a folder called LegoBoxViewe
   update-folders.sh        Mac / Linux helper
   metadata.example.json    example for the information card
   README.txt               this file
+  index.html               opens LegoBoxViewer.html, so a web address without a file name works
+  .nojekyll                (empty) tells GitHub Pages to serve the files as they are
 Next to them, make a folder called "images" and put one folder per box in it (see below).
 update-folders also creates the "images" folder if it is missing.
 
@@ -30,9 +32,16 @@ CONTROLS
                 go through the box's other pictures.
     Close:      Esc, the Close button, or click beside the picture.
 - Boxes with a lid open with the "Open lid" button.
+- The Gallery button (or the G key) opens all of the box's pictures full screen, starting with
+  the top; it works the same way as clicking a side (zoom, move, arrows to go through them).
 
-Pick a box in the menu on the left (along the top on a phone). Each menu item shows a small copy
-of that box's top.jpg next to its name.
+Pick a box in the menu on the left (on a phone, tap the ☰ button). Each menu item shows a small
+copy of that box's top.jpg, the folder name and, if metadata.json has one, the set name.
+Boxes whose metadata.json has a bricklinkMenu are grouped the same way as on BrickLink, for example
+Sets > Pirates > Pirates I. Click a group's name to fold it in or out; the number is how many boxes
+it holds. Boxes without a bricklinkMenu are listed after the groups.
+The page background takes its colours from the shown box's top.jpg (a strongly blurred copy of it)
+and changes when you pick another box.
 The address ends with #<box name>, so you can bookmark or share a link to one box.
 
 
@@ -50,7 +59,8 @@ Every folder inside "images" is one box, and the folder's name is its name in th
       ...
     folders.js         <- made by update-folders, don't edit by hand
 
-The menu is sorted by name (6276 comes before 6285, 10 comes after 9).
+The menu is sorted by name (6276 comes before 6285, 10 comes after 9), inside the BrickLink
+groups from each box's metadata.json (see INFORMATION CARD).
 
 
 ADDING, RENAMING OR REMOVING A BOX, OR CHANGING ITS metadata.json
@@ -101,6 +111,7 @@ Each box takes its proportions from its own pictures. The width is always the sa
 - Height comes from left.jpg: height = depth x (left.jpg height / left.jpg width)
 All other faces, the inner box and the card adjust to match.
 So crop top.jpg and left.jpg tightly to the edges of the box; the others are stretched to fit.
+(boxSize in metadata.json is only shown on the information card; it does not change the shape.)
 
 
 INFORMATION CARD (metadata.json)
@@ -111,16 +122,28 @@ metadata.example.json next to this README is a ready-made example to copy:
 
 {
   "name": "Black Seas Barracuda",
+  "year": 1989,
+  "boxSize": { "width": 57.7, "depth": 46.4, "height": 9.4 },
   "bricklink": "https://www.bricklink.com/v2/catalog/catalogitem.page?S=6285-1",
   "instructions": "https://www.bricklink.com/v2/catalog/catalogitem.page?I=6285-1",
   "bricklinkMenu": ["Sets", "Pirates", "Pirates I"]
 }
 
-name           Name of the set, shown as the card's title (the folder name is used if left out).
+name           Name of the set, shown as the card's title (the folder name is used if left out)
+               and under the folder name in the menu.
+year           Year of release, shown on the card as "Released 1989".
+boxSize        Outside size of the box in cm: width (front, left to right), depth (front to back)
+               and height. Shown on the card as "Box 57.7 x 46.4 x 9.4 cm" (only shown, the
+               box's shape still comes from the pictures). These forms also work:
+                 "boxSize": [57.7, 46.4, 9.4]                       (width, depth, height)
+                 "boxSize": "57.7 x 46.4 x 9.4 cm"                  (cm, mm or in)
+                 "boxSize": { "width": 577, "depth": 464, "height": 94, "unit": "mm" }
 bricklink      Link to the set on BrickLink, shown as a "BrickLink" button.
 instructions   Link to the instructions, shown as an "Instructions" button.
-bricklinkMenu  BrickLink menu tree, top level first, shown as  Sets > Pirates > Pirates I.
+bricklinkMenu  BrickLink menu tree, top level first. Shown on the card as  Sets > Pirates > Pirates I,
+               and the box is put in that same group in the menu on the left.
                An entry can also be a link: {"name": "Pirates", "url": "https://www.bricklink.com/..."}
+               (the link works on the card; the menu only uses the name).
 
 Every field is optional. Only links starting with http:// or https:// are used; others are ignored.
 Links open in a new tab.
@@ -130,8 +153,9 @@ If the card says metadata.json "is there, but the page doesn't have it yet": run
 (from this version of the package) and reload. Opened from disk, the page only knows what
 update-folders copied into images/folders.js.
 If the card mentions metadata.json.txt: Windows hid a ".txt" ending. In Explorer turn on
-View > File name extensions, rename the file to metadata.json, run update-folders and reload. Don't use the characters */ anywhere in the file, because update-folders
-copies it into images/folders.js and */ would break that copy.
+View > File name extensions, rename the file to metadata.json, run update-folders and reload.
+Don't use the characters */ anywhere in the file, because update-folders copies it into
+images/folders.js and */ would break that copy.
 
 
 WHICH WAY UP
@@ -140,3 +164,26 @@ WHICH WAY UP
 - top.jpg and card.jpg: as seen from above, with the box's front edge at the bottom of the picture.
 - lid-inside.jpg: as you see it with the lid open; the bottom of the picture is the hinge.
 - bottom.jpg: as you see it after turning the box over sideways (left to right). The top of the picture is the box's back edge.
+
+
+LICENCE
+-------
+Copyright (c) 2026 Rihard
+
+LegoBoxViewer (the code, this README and the photos taken by the author) is licensed under the
+Creative Commons Attribution-NonCommercial 4.0 International licence (CC BY-NC 4.0):
+https://creativecommons.org/licenses/by-nc/4.0/
+
+In short, you may:
+- share it: copy and pass it on in any medium or format;
+- adapt it: change it and build on it;
+as long as you:
+- give credit: name the author, link to the licence and say if you made changes;
+- don't use it commercially: not for anything mainly meant for money or a commercial advantage,
+  such as selling it or using it in a paid product or service.
+This summary is not the licence; the full legal text at the link above is what applies.
+For commercial use, ask the author for permission.
+
+LEGO® is a trademark of the LEGO Group of companies, which does not sponsor, authorise or endorse
+this project. Box artwork that appears in the photos is © the LEGO Group and is not covered by
+this licence.

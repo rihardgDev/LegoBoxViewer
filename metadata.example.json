@@ -1,5 +1,7 @@
 {
   "name": "Black Seas Barracuda",
+  "year": 1989,
+  "boxSize": { "width": 57.7, "depth": 46.4, "height": 9.4 },
   "bricklink": "https://www.bricklink.com/v2/catalog/catalogitem.page?S=6285-1",
   "instructions": "https://www.bricklink.com/v2/catalog/catalogitem.page?I=6285-1",
   "bricklinkMenu": ["Sets", "Pirates", "Pirates I"]
