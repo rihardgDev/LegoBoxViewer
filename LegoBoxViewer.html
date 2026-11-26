@@ -91,6 +91,25 @@
   #menu summary .cnt { margin-left: auto; color: #80848b; font-weight: 500; font-size: 11.5px; }
   #menu .kids { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 4px 10px; padding-left: 8px; border-left: 1px solid rgba(0,0,0,.14); }
   #menuBtn { display: none; }
+  /* search box at the top of the menu */
+  #menu .msearch {
+    position: sticky; top: -6px; z-index: 1; margin: -6px -6px 2px; padding: 6px;
+    background: rgba(246,245,242,.96); border-radius: 13px 13px 0 0;
+  }
+  #search {
+    width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; color: #1d1f23;
+    padding: 8px 30px 8px 31px; border-radius: 999px; border: 1px solid #ddd9d0; outline: none;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b6f76' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 10px 50% no-repeat;
+  }
+  #search:focus { border-color: #1971c2; box-shadow: 0 0 0 3px rgba(25,113,194,.15); }
+  #search::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+  #searchClear {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0;
+    border-radius: 50%; border: 0; background: #ecebe7; color: #4a4e55; font-size: 14px; line-height: 1; box-shadow: none;
+  }
+  #searchClear:hover { background: #dedcd6; }
+  #menuList { display: flex; flex-direction: column; gap: 4px; }
+  #noMatch { margin: 6px 8px 8px; color: #6b6f76; font-size: 12.5px; }
   #empty {
     position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 440px; text-align: center;
     background: rgba(255,255,255,.9); border-radius: 14px; padding: 18px 22px; box-shadow: 0 6px 24px rgba(0,0,0,.08);
@@ -117,6 +136,15 @@
   #info .links a:focus-visible, #infoTree a:focus-visible { outline: 2px solid #1971c2; outline-offset: 2px; }
   #infoErr { margin: 8px 0 0; font-size: 12px; color: #a61e1e; overflow-wrap: anywhere; }
   #infoErr.note { color: #8a5a00; background: #fff6dc; border-radius: 8px; padding: 8px 10px; }
+  /* support link */
+  #coffee {
+    position: fixed; right: 16px; bottom: 22px; z-index: 2; display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 15px; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 13.5px; white-space: nowrap;
+    background: #ffdd57; color: #1d1f23; border: 1px solid rgba(0,0,0,.08); box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  }
+  #coffee:hover { background: #ffd43b; }
+  #coffee:focus-visible { outline: 2px solid #1971c2; outline-offset: 2px; }
+  #coffee .cup { font-size: 16px; line-height: 1; }
   #toast {
     position: fixed; left: 50%; bottom: 80px; transform: translate(-50%, 12px); opacity: 0; transition: .2s; z-index: 20;
     background: #1d1f23; color: #fff; padding: 9px 14px; border-radius: 10px; pointer-events: none; max-width: 90vw; text-align: center;
@@ -169,6 +197,9 @@
     #infoName { font-size: 15px; }
     #info .links { margin-top: 8px; }
     header { padding: 0 14px; }
+    header p { padding-right: 46px; }
+    #coffee { top: 10px; right: 12px; bottom: auto; width: 38px; height: 38px; padding: 0; justify-content: center; }
+    #coffee .txt { display: none; }
     #side { max-height: calc(100% - 24px); }
     #menuBtn {
       display: inline-flex; align-items: center; gap: 6px; pointer-events: auto; align-self: flex-start;
@@ -192,7 +223,14 @@
   <header><h1 id="title">LegoBoxViewer</h1>
     <p>Drag to rotate · hold both mouse buttons (or use two fingers) to move<br>Scroll or pinch to zoom · click a side to see its picture</p></header>
   <button id="menuBtn" aria-controls="menu" aria-expanded="false">☰ <span id="menuBtnName">Boxes</span></button>
-  <nav id="menu" aria-label="Boxes"></nav>
+  <nav id="menu" aria-label="Boxes">
+    <div class="msearch" role="search">
+      <input id="search" type="search" placeholder="Search number, name, year, group" aria-label="Search boxes" autocomplete="off" spellcheck="false">
+      <button id="searchClear" type="button" aria-label="Clear search" hidden>✕</button>
+    </div>
+    <div id="menuList"></div>
+    <p id="noMatch" hidden>No boxes match.</p>
+  </nav>
 </div>
 <div id="empty" hidden>No boxes yet. Make a folder called <b>images</b> next to this file and put each box's pictures
 in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and reload.</div>
@@ -207,6 +245,8 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
   </div>
   <p id="infoErr" hidden></p>
 </aside>
+<a id="coffee" href="https://buymeacoffee.com/epamsmail" target="_blank" rel="noopener noreferrer"
+   title="Buy me a coffee (opens buymeacoffee.com in a new tab)" aria-label="Buy me a coffee"><span class="cup" aria-hidden="true">☕</span><span class="txt">Buy me a coffee</span></a>
 <div class="bar" id="bar">
   <button id="lidBtn" class="primary">Open lid</button>
   <button id="resetBtn">Reset view</button>
@@ -559,6 +599,16 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
   const menuBtn = document.getElementById('menuBtn');
   function setMenuOpen(open) { document.body.classList.toggle('menu-open', open); menuBtn.setAttribute('aria-expanded', String(open)); }
   menuBtn.addEventListener('click', () => setMenuOpen(!document.body.classList.contains('menu-open')));
+  // menu pictures load only when their item is (nearly) visible in the menu: not for folded groups,
+  // items hidden by the search, or the phone menu while it is closed
+  const thumbWatch = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      thumbWatch.unobserve(e.target);
+      const b = boxes.find((x) => x.btn === e.target);
+      if (b) findImage(b.dir, 'top').then((img) => { if (img) b.thumb.src = img.url; });
+    }
+  }, { root: menu, rootMargin: '200px 0px' });
   function itemButton(b) {
     b.btn = document.createElement('button');
     b.btn.className = 'item'; b.btn.title = b.name;
@@ -574,7 +624,7 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
     const row = document.createElement('span'); row.className = 'mi';
     row.append(thumb, label);
     b.btn.append(row);
-    findImage(b.dir, 'top').then((img) => { if (img) thumb.src = img.url; });
+    b.thumb = thumb; thumbWatch.observe(b.btn);           // the picture loads when the item scrolls into view
     b.btn.addEventListener('click', () => select(b));
     return b.btn;
   }
@@ -603,8 +653,55 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
       }
       for (const b of n.items.sort((x, y) => byName(x.name, y.name))) parent.append(itemButton(b));
     };
-    render(root, menu);
+    render(root, document.getElementById('menuList'));
+    for (const b of boxes) {                              // text the search looks in
+      const d = metaOf(b) || {};
+      b.search = fold([b.name, pick(d, ['name', 'setName', 'title']), pick(d, ['year', 'released', 'releaseYear', 'yearOfRelease']),
+        ...crumbsOf(d).map((c) => c.label)].filter((x) => x != null && typeof x !== 'object').join(' '));
+    }
+    for (const det of menu.querySelectorAll('details.grp')) {
+      const cnt = det.querySelector(':scope > summary .cnt'); cnt.dataset.total = cnt.textContent;
+    }
   }
+
+  // ---- search: show only boxes whose number, set name, year or group contains every typed word ----
+  const fold = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const search = document.getElementById('search'), searchClear = document.getElementById('searchClear');
+  let openBeforeSearch = null;
+  function applySearch() {
+    const words = fold(search.value).split(/\s+/).filter(Boolean);
+    const active = words.length > 0;
+    searchClear.hidden = !search.value;
+    const groups = [...menu.querySelectorAll('details.grp')];
+    if (active && !openBeforeSearch) openBeforeSearch = new Map(groups.map((g) => [g, g.open]));
+    let shown = 0;
+    for (const b of boxes) {
+      const hit = !active || words.every((w) => b.search.includes(w));
+      b.btn.hidden = !hit; if (hit) shown++;
+    }
+    for (const g of groups.reverse()) {                    // innermost groups first
+      const n = [...g.querySelectorAll('button.item')].filter((x) => !x.hidden).length;
+      g.hidden = n === 0;
+      const cnt = g.querySelector(':scope > summary .cnt');
+      cnt.textContent = active ? `${n} / ${cnt.dataset.total}` : cnt.dataset.total;
+      if (active && n) g.open = true;
+    }
+    if (!active && openBeforeSearch) { for (const [g, o] of openBeforeSearch) g.open = o; openBeforeSearch = null; }
+    document.getElementById('noMatch').hidden = shown > 0;
+  }
+  search.addEventListener('input', applySearch);
+  searchClear.addEventListener('click', () => { search.value = ''; applySearch(); search.focus(); });
+  search.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); if (search.value) { search.value = ''; applySearch(); } else search.blur(); }
+    if (e.key === 'Enter') { const first = boxes.find((b) => !b.btn.hidden); if (first) select(first); }
+  });
+  // "/" jumps to the search box (desktop)
+  addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest && e.target.closest('input, textarea, select')) return;
+    if (!document.getElementById('viewer').hidden) return;
+    e.preventDefault(); search.focus(); search.select();
+  });
 
   function select(b, keepHash) {
     if (!b || b === current) return;
@@ -649,7 +746,8 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
   const HOME = { yaw: -28, pitch: -32, zoom: 1, panX: 0, panY: 0 };
   let yaw = HOME.yaw, pitch = HOME.pitch, zoom = HOME.zoom, panX = 0, panY = 0, lid = 0, lidTarget = 0;
   let vx = 0, vy = 0, dirty = true;
-  const L = norm([0.35, -0.85, 0.4]);                    // light from upper right, in front
+  const L = norm([0.35, -0.85, 0.4]);                    // main light: upper right, in front
+  const L2 = norm([-0.8, -0.25, 0.55]);                  // extra (fill) light: from the left, lower, in front
   function norm(v) { const l = Math.hypot(...v); return v.map((c) => c / l); }
   function rotate([x, y, z]) {
     const a = yaw * Math.PI / 180, b = pitch * Math.PI / 180;
@@ -672,7 +770,9 @@ in its own folder inside it. Then run <b>update-folders</b> (see README.txt) and
       const n = f.lid ? [0, -Math.cos(t) * f.lid, -Math.sin(t) * f.lid] : f.n;
       const r = rotate(n);
       const d = Math.max(0, r[0] * L[0] + r[1] * L[1] + r[2] * L[2]);
-      f.shade.style.opacity = Math.min(0.6, (1 - (0.62 + 0.38 * d)) + f.base).toFixed(3);
+      const d2 = Math.max(0, r[0] * L2[0] + r[1] * L2[1] + r[2] * L2[2]);
+      const light = Math.min(1, 0.62 + 0.38 * d + 0.3 * d2);    // ambient + main light + extra light
+      f.shade.style.opacity = Math.max(0, Math.min(0.6, 1 - light + f.base)).toFixed(3);
     }
   }
 
