@@ -168,7 +168,7 @@ WHICH WAY UP
 
 LICENCE
 -------
-Copyright (c) 2026 Rihard
+Copyright (c) 2026 
 
 LegoBoxViewer (the code, this README and the photos taken by the author) is licensed under the
 Creative Commons Attribution-NonCommercial 4.0 International licence (CC BY-NC 4.0):
