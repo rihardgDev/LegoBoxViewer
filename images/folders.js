@@ -4,8 +4,11 @@ window.BOX_FOLDERS = [
   "6270 Forbidden Island",
   "6273 Rock Island Refuge",
   "6276 Eldorado Fortress",
+  "6277 Imperial Trading Post",
   "6278 Enchanted island",
   "6285 Black Seas Barracuda",
+  "6286 Skull's Eye Schooner",
+  "6984 Galactic Mediator",
   "6989 Mega Core Magnetizer",
 ];
 window.BOX_META_TEXT = {};
@@ -78,6 +81,20 @@ BOX_META_TEXT["6276 Eldorado Fortress"] = function () {/*
 }
 
 */};
+BOX_META_TEXT["6277 Imperial Trading Post"] = function () {/*
+{
+  "name": "Imperial Trading Post",
+  "year": 1992,
+  "bricklink": "https://www.bricklink.com/v2/catalog/catalogitem.page?S=6277-1",
+  "instructions": "https://www.bricklink.com/v2/catalog/catalogitem.page?I=6277-1",
+  "bricklinkMenu": [
+    "Sets",
+    "Pirates",
+    "Imperial Guards"
+  ]
+}
+
+*/};
 BOX_META_TEXT["6278 Enchanted island"] = function () {/*
 {
   "name": "Enchanted Island",
@@ -107,6 +124,34 @@ BOX_META_TEXT["6285 Black Seas Barracuda"] = function () {/*
     "Sets",
     "Pirates",
     "Pirates I"
+  ]
+}
+
+*/};
+BOX_META_TEXT["6286 Skull's Eye Schooner"] = function () {/*
+{
+  "name": "Skull's Eye Schooner",
+  "year": 1993,
+  "bricklink": "https://www.bricklink.com/v2/catalog/catalogitem.page?S=6286-1",
+  "instructions": "https://www.bricklink.com/v2/catalog/catalogitem.page?I=6286-1",
+  "bricklinkMenu": [
+    "Sets",
+    "Pirates",
+    "Pirates I"
+  ]
+}
+
+*/};
+BOX_META_TEXT["6984 Galactic Mediator"] = function () {/*
+{
+  "name": "Galactic Mediator",
+  "year": 1992,
+  "bricklink": "https://www.bricklink.com/v2/catalog/catalogitem.page?S=6984-1",
+  "instructions": "https://www.bricklink.com/v2/catalog/catalogitem.page?I=6984-1",
+  "bricklinkMenu": [
+    "Sets",
+    "Space",
+    "Space Police I"
   ]
 }
 
